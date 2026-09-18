@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-loop}
+      POSTGRES_USER: ${POSTGRES_USER:-loop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loop_local_password}
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes: [postgres_data:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  ai-service:
+    build: {context: apps/ai-service}
+    ports: ["8000:8000"]
+    environment:
+      PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_GENERATION_MODEL: ${GEMINI_GENERATION_MODEL:-gemini-2.5-flash}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  web:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN}
+      CONNECTOR_ENCRYPTION_KEY: ${CONNECTOR_ENCRYPTION_KEY}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+    ports: ["3000:3000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai-service: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  sentiment-worker:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    command: ["node", "--import", "tsx", "apps/web/workers/sentiment.ts"]
+    environment:
+      DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+      CONNECTOR_ENCRYPTION_KEY: ${CONNECTOR_ENCRYPTION_KEY}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai-service: {condition: service_healthy}
+  embedding-worker:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    command: ["node", "--import", "tsx", "apps/web/workers/embeddings.ts"]
+    environment:
+      DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai-service: {condition: service_healthy}
+  theme-worker:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    command: ["node", "--import", "tsx", "apps/web/workers/themes.ts"]
+    environment:
+      DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai-service: {condition: service_healthy}
+  analytics-worker:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    command: ["node", "--import", "tsx", "apps/web/workers/analytics.ts"]
+    environment:
+      DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+volumes:
+  postgres_data:

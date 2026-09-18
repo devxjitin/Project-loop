@@ -1,0 +1,3 @@
+import type { PoolClient } from 'pg';
+export function dateRange(search: URLSearchParams) { const to = search.get('to') ?? new Date().toISOString().slice(0, 10); const from = search.get('from') ?? new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) throw new Error('Use an inclusive YYYY-MM-DD date range.'); return { from, to }; }
+export async function trend(client: PoolClient, tenantId: string, from: string, to: string) { return (await client.query('SELECT day, positive_count, neutral_count, negative_count, total_count FROM tenant_analytics_sentiment_daily WHERE tenant_id = $1 AND day BETWEEN $2::date AND $3::date ORDER BY day', [tenantId, from, to])).rows; }
