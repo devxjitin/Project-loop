@@ -11,3 +11,5 @@ __pycache__/
 .pytest_cache/
 .venv/
 apps/web/.local-storage/
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
