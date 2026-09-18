@@ -106,7 +106,7 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Replace duplicated hard-coded Docker database credentials with shared environment variables.
 - [ ] Deploy the AI service, Redis, workers, and database migrations alongside the Vercel web deployment.
 - [x] Use timing-safe comparison for every internal cron secret check.
-- [ ] Make PDF browser configuration portable across Linux production hosts.
+- [x] Make PDF browser configuration portable across Linux production hosts. Verified the production Docker image includes `/usr/bin/chromium` and `CHROME_PATH` resolves to that executable.
 
 ## Product and accessibility improvements
 
