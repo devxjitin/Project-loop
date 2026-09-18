@@ -10,14 +10,14 @@ Before launch, run the staging workload below against an anonymized tenant with 
 
 ## Scheduled jobs
 
-Call the internal report-schedule endpoint with `CRON_SECRET`. Investigate any nonzero failed count immediately.
+The `report-schedule-worker` checks enabled schedules every 15 minutes and generates reports due on Monday (weekly) or the first UTC day of the month (monthly). Deploy it with the other queue consumers and the privileged `DATABASE_WORKER_URL`; it is intentionally not an HTTP cron endpoint. Investigate failed worker jobs immediately.
 
 ## Database credentials and roles
 
 Run [`infra/database-roles.sql`](../infra/database-roles.sql) as the managed-database administrator after applying migrations. Store the resulting credentials only in the platform secret manager:
 
-- `DATABASE_URL` is the unprivileged `loop_app` connection and is the only database URL supplied to the Vercel web application.
-- `DATABASE_WORKER_URL` is the `loop_worker` connection, which has `BYPASSRLS`; provide it only to the four queue-consumer services.
+- `DATABASE_URL` is the unprivileged `loop_app` connection and is the only database URL supplied to the Vercel web application. Keep `DATABASE_SSL` unset (or set it to `true`) for managed production Postgres; local Compose sets it to `false` because its development database does not use TLS.
+- `DATABASE_WORKER_URL` is the `loop_worker` connection, which has `BYPASSRLS`; provide it only to the five queue-consumer services.
 
 Before each release, query `pg_roles` as shown in the provisioning script and confirm `loop_app.rolbypassrls` is false, `loop_worker.rolbypassrls` is true, and no Vercel environment contains `DATABASE_WORKER_URL`.
 

@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { redactForModel } from '@/lib/server/pii';
+import { redactForModel } from './pii';
 
 export type ReportSnapshot = { metrics: { total: number; positive: number; neutral: number; negative: number; previousTotal: number; previousNegative: number }; topThemes: Array<{ name: string; total: number; positive: number; neutral: number; negative: number }>; quotes: Array<{ id: string; text: string; source: string; sentiment: string | null }> };
 export async function reportSnapshot(client: PoolClient, tenantId: string, from: string, to: string): Promise<ReportSnapshot> {

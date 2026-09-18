@@ -12,7 +12,8 @@
     "sentiment-worker": "tsx workers/sentiment.ts",
     "embedding-worker": "tsx workers/embeddings.ts",
     "theme-worker": "tsx workers/themes.ts",
-    "analytics-worker": "tsx workers/analytics.ts"
+    "analytics-worker": "tsx workers/analytics.ts",
+    "report-schedule-worker": "tsx workers/report-schedule.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",

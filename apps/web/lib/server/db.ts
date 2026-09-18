@@ -2,15 +2,19 @@ import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
 declare global { var loopPool: Pool | undefined; }
 
+const databaseSsl = process.env.DATABASE_SSL === 'false'
+  ? undefined
+  : process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined;
+
 export const db = globalThis.loopPool ?? new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined,
+  ssl: databaseSsl,
 });
 if (process.env.NODE_ENV !== 'production') globalThis.loopPool = db;
 
 /** Used only by scheduled workers. Deploy this with a role that has BYPASSRLS, never in request handlers. */
-export const workerDb = new Pool({ connectionString: process.env.DATABASE_WORKER_URL ?? process.env.DATABASE_URL, max: 2, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined });
+export const workerDb = new Pool({ connectionString: process.env.DATABASE_WORKER_URL ?? process.env.DATABASE_URL, max: 2, ssl: databaseSsl });
 
 export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await db.connect();

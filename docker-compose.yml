@@ -38,6 +38,7 @@ services:
     build: {context: ., dockerfile: apps/web/Dockerfile}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
@@ -61,6 +62,7 @@ services:
     command: ["node", "--import", "tsx", "apps/web/workers/sentiment.ts"]
     environment:
       DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
@@ -73,6 +75,7 @@ services:
     command: ["node", "--import", "tsx", "apps/web/workers/embeddings.ts"]
     environment:
       DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
@@ -85,6 +88,7 @@ services:
     command: ["node", "--import", "tsx", "apps/web/workers/themes.ts"]
     environment:
       DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
@@ -97,9 +101,23 @@ services:
     command: ["node", "--import", "tsx", "apps/web/workers/analytics.ts"]
     environment:
       DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
       REDIS_URL: redis://redis:6379
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
+  report-schedule-worker:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    command: ["node", "--import", "tsx", "apps/web/workers/report-schedule.ts"]
+    environment:
+      DATABASE_WORKER_URL: postgresql://${POSTGRES_USER:-loop}:${POSTGRES_PASSWORD:-loop_local_password}@postgres:5432/${POSTGRES_DB:-loop}
+      DATABASE_SSL: "false"
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai-service: {condition: service_healthy}
 volumes:
   postgres_data:
