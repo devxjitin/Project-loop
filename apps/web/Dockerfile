@@ -14,6 +14,10 @@ RUN apt-get update \
   && chromium --version \
   && rm -rf /var/lib/apt/lists/*
 ENV CHROME_PATH=/usr/bin/chromium
+# Docker supplies a container-id HOSTNAME by default. Next's standalone server
+# treats that value as its bind address, so make the intended all-interface
+# bind explicit for both published ports and the in-container healthcheck.
+ENV HOSTNAME=0.0.0.0
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
