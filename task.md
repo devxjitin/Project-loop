@@ -60,7 +60,7 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Add actionable empty state to Feedback inbox.
 - [x] Add actionable empty state to Connectors.
 - [x] Add actionable empty state to Reports.
-- [ ] Standardize loading, empty, and error states across data-fetching components.
+- [x] Standardize loading, empty, and error states across data-fetching components.
 
 ### Session experience
 
@@ -114,8 +114,8 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Replace native destructive `window.confirm` prompts with branded confirmation dialogs.
 - [x] Fix nested interactive controls in feedback rows and theme tags.
 - [x] Add accessible labels, focus handling, and keyboard behavior to all new dialogs and menus.
-- [ ] Add loading skeletons to the six data-fetching pages.
-- [ ] Add a consistent error/retry UI for failed data loads.
+- [x] Add loading skeletons to the six data-fetching pages.
+- [x] Add a consistent error/retry UI for failed data loads.
 - [x] Improve PII redaction beyond regex-only matching; document remaining residual risk.
 
 ## Repository hygiene

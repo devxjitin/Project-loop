@@ -6,6 +6,7 @@ import { useSession } from "@/components/auth-session";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataLoadError } from "@/components/ui/data-load-error";
 
 type Report = {
   id: string;
@@ -27,6 +28,7 @@ export function ReportGenerator() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [shareExpiry, setShareExpiry] = useState(() =>
     dateForInput(new Date(Date.now() + 30 * 86_400_000)),
@@ -49,8 +51,9 @@ export function ReportGenerator() {
         if (!response.ok)
           throw new Error(body.error ?? "Unable to load reports.");
         setReports(body.reports);
+        setLoadError("");
       } catch (error) {
-        setMessage(
+        setLoadError(
           error instanceof Error ? error.message : "Unable to load reports.",
         );
       } finally {
@@ -197,6 +200,9 @@ export function ReportGenerator() {
         <p role="status" className="mt-3 text-sm text-slate-700">
           {message}
         </p>
+      )}
+      {loadError && (
+        <DataLoadError message={loadError} onRetry={() => void load()} />
       )}
       {shareUrl && (
         <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm">
