@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { AuthError, requireActiveAuth, requireRole } from '@/lib/server/auth';
 import { setTenantContext, withTransaction } from '@/lib/server/db';
 import { storeCsv } from '@/lib/server/storage';
+import { wakeWorkers } from '@/lib/server/worker-wake';
 import { importCsvFeedback } from '@/lib/server/csv-ingestion';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const reviewColumn = job.column_mapping?.text;
     if (!reviewColumn) return Response.json({ error: 'A main review column is required to import this CSV.' }, { status: 400 });
     const result = await importCsvFeedback({ jobId, tenantId: claims.tenantId, content, reviewColumn });
+    wakeWorkers();
     return Response.json({ uploaded: true, status: 'completed', imported: result.imported, skipped: result.skipped, url: blob.url });
   } catch (error) {
     if (error instanceof AuthError) return Response.json({ error: error.message }, { status: error.status });
