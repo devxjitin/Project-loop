@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: loop-ai-service
+    runtime: docker
+    dockerContext: apps/ai-service
+    dockerfilePath: apps/ai-service/Dockerfile
+    region: virginia
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: GEMINI_GENERATION_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false
+
+  - type: keyvalue
+    name: loop-redis
+    region: virginia
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Vercel functions (auth is the password in the connection URL)
