@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import asyncio
+from functools import lru_cache
 from typing import Any, Literal, cast
 
 import hdbscan
@@ -105,6 +106,7 @@ def parse_classifications(content: str, expected_ids: set[str]) -> list[Classifi
         raise HTTPException(status_code=502, detail="Gemini response did not classify every item exactly once")
     return classifications
 
+@lru_cache(maxsize=1)
 def gemini_client() -> genai.Client:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
