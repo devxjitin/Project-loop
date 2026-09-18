@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { useNotification } from "@/components/notification";
 import { useSession } from "@/components/auth-session";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataLoadError } from "@/components/ui/data-load-error";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ImportJob = {
   id: string;
@@ -46,19 +50,32 @@ export function CsvImport() {
     null,
   );
   const [progress, setProgress] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const canUpload = role === "admin" || role === "editor";
 
   const load = async () => {
     if (!token) return;
-    const response = await fetch("/api/ingestions", {
-      headers: { Authorization: "Bearer " + token },
-    });
-    const body = (await response.json()) as {
-      jobs?: ImportJob[];
-      error?: string;
-    };
-    if (response.ok) setJobs(body.jobs ?? []);
-    else notify("failure", body.error ?? "Unable to load uploads.");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/ingestions", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      const body = (await response.json()) as {
+        jobs?: ImportJob[];
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(body.error ?? "Unable to load uploads.");
+      setJobs(body.jobs ?? []);
+      setLoadError("");
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "Unable to load uploads.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     void load(); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,7 +228,7 @@ export function CsvImport() {
               <div className="grid gap-3">
                 <label className="text-sm font-medium">
                   Dataset name
-                  <input
+                  <Input
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     disabled={!file}
@@ -220,7 +237,7 @@ export function CsvImport() {
                 </label>
                 <label className="text-sm font-medium">
                   Main review column
-                  <select
+                  <Select
                     value={reviewColumn}
                     onChange={(event) => setReviewColumn(event.target.value)}
                     disabled={!headers.length}
@@ -230,7 +247,7 @@ export function CsvImport() {
                     {headers.map((header) => (
                       <option key={header}>{header}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <p className="text-xs text-slate-500">
                   Date fields are not imported.
@@ -264,6 +281,9 @@ export function CsvImport() {
         )}
         <div className="mt-8 border-t pt-5">
           <h3 className="font-semibold">Recent uploads</h3>
+          {loadError && (
+            <DataLoadError message={loadError} onRetry={() => void load()} />
+          )}
           <div className="mt-3 overflow-hidden rounded-lg border">
             <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <span>Dataset</span>
@@ -271,7 +291,15 @@ export function CsvImport() {
               <span>Uploaded</span>
               <span></span>
             </div>
-            {jobs.length ? (
+            {loading ? (
+              <div
+                className="space-y-3 p-4"
+                aria-label="Loading upload history"
+              >
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : jobs.length ? (
               jobs.map((job) => (
                 <div
                   key={job.id}

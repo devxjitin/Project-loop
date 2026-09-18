@@ -5,6 +5,17 @@ import { useSession, type Role } from "@/components/auth-session";
 import { useNotification } from "@/components/notification";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
 
 type Member = {
   id: string;
@@ -27,19 +38,31 @@ export function MemberManagement() {
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("viewer");
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [loading, setLoading] = useState(true);
   const headers = {
     Authorization: `Bearer ${token}`,
     "content-type": "application/json",
   };
   const load = async () => {
     if (!token || role !== "admin") return;
-    const response = await fetch("/api/members", { headers });
-    const body = (await response.json()) as {
-      members?: Member[];
-      error?: string;
-    };
-    if (response.ok) setMembers(body.members ?? []);
-    else notify("failure", body.error ?? "Unable to load members.");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/members", { headers });
+      const body = (await response.json()) as {
+        members?: Member[];
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(body.error ?? "Unable to load members.");
+      setMembers(body.members ?? []);
+    } catch (error) {
+      notify(
+        "failure",
+        error instanceof Error ? error.message : "Unable to load members.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     void load(); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +135,7 @@ export function MemberManagement() {
         Invitation links are never exposed in the workspace.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
-        <input
+        <Input
           aria-label="Invite email"
           type="email"
           value={email}
@@ -120,7 +143,7 @@ export function MemberManagement() {
           placeholder="colleague@company.com"
           className="min-w-64 rounded-md border px-3 py-2 text-sm"
         />
-        <select
+        <Select
           aria-label="Invite role"
           value={inviteRole}
           onChange={(event) => setInviteRole(event.target.value as Role)}
@@ -129,58 +152,66 @@ export function MemberManagement() {
           <option value="viewer">Viewer</option>
           <option value="editor">Editor</option>
           <option value="admin">Admin</option>
-        </select>
+        </Select>
         <Button onClick={() => void invite()} disabled={!email}>
           Send invitation
         </Button>
       </div>
-      <div className="mt-5 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b text-slate-500">
-            <tr>
-              <th className="p-2">Member</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Role</th>
-              <th className="p-2">Access</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member) => (
-              <tr key={member.id} className="border-b">
-                <td className="p-2">
-                  <p className="font-medium">
-                    {member.display_name ?? member.email}
-                  </p>
-                  <p className="text-slate-500">{member.email}</p>
-                </td>
-                <td className="p-2 capitalize">{member.status}</td>
-                <td className="p-2">
-                  <select
-                    aria-label={`${member.email} role`}
-                    value={member.role}
-                    onChange={(event) =>
-                      updateRole(member, event.target.value as Role)
-                    }
-                    disabled={member.status !== "active"}
-                    className="rounded border px-2 py-1"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td className="p-2">
-                  <Button
-                    onClick={() => revoke(member)}
-                    disabled={member.status !== "active"}
-                  >
-                    Revoke
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-5">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>Member</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Role</TableHeaderCell>
+              <TableHeaderCell>Access</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <Skeleton className="h-10 w-full" />
+                </TableCell>
+              </TableRow>
+            ) : (
+              members.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    <p className="font-medium">
+                      {member.display_name ?? member.email}
+                    </p>
+                    <p className="text-slate-500">{member.email}</p>
+                  </TableCell>
+                  <TableCell className="capitalize">{member.status}</TableCell>
+                  <TableCell>
+                    <Select
+                      aria-label={`${member.email} role`}
+                      value={member.role}
+                      onChange={(event) =>
+                        updateRole(member, event.target.value as Role)
+                      }
+                      disabled={member.status !== "active"}
+                      className="rounded border px-2 py-1"
+                    >
+                      <option value="viewer">Viewer</option>
+                      <option value="editor">Editor</option>
+                      <option value="admin">Admin</option>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      onClick={() => revoke(member)}
+                      disabled={member.status !== "active"}
+                    >
+                      Revoke
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
       {confirmation && (
         <ConfirmDialog

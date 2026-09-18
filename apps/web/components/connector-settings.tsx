@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/auth-session";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DataLoadError } from "@/components/ui/data-load-error";
 
 type Connector = {
   id: string;
@@ -21,16 +23,29 @@ export function ConnectorSettings() {
   const [subdomain, setSubdomain] = useState("");
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const headers = () => ({
     Authorization: `Bearer ${token}`,
     "content-type": "application/json",
   });
   const load = async () => {
     if (!token) return;
-    const res = await fetch("/api/connectors", { headers: headers() });
-    const body = await res.json();
-    if (res.ok) setConnectors(body.connectors);
-    else setMessage(body.error);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/connectors", { headers: headers() });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Unable to load connectors.");
+      setConnectors(body.connectors);
+      setLoadError("");
+      setMessage("");
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "Unable to load connectors.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     void load(); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,8 +138,16 @@ export function ConnectorSettings() {
           {message}
         </p>
       )}
+      {loadError && (
+        <DataLoadError message={loadError} onRetry={() => void load()} />
+      )}
       <div className="mt-5 space-y-3">
-        {!connectors.length ? (
+        {loading ? (
+          <div className="space-y-3" aria-label="Loading connectors">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : !connectors.length ? (
           <EmptyState
             title="Connect your first feedback source"
             description="Start with Zendesk, Typeform, or a generic signed webhook. Once feedback arrives, LOOP will classify it and surface insights."
