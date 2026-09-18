@@ -10,3 +10,5 @@ Before deploying:
 4. Keep Redis and the Python AI worker on a worker-friendly platform; Vercel Functions should orchestrate work rather than host long-running queue consumers.
 
 Vercel provides Preview deployments for branches and Production for the configured production branch. Set database credentials separately in each environment; never commit them to `.env` files.
+
+For the production role split, apply [`database-roles.sql`](database-roles.sql) as the database administrator after migrations. Give Vercel only the unprivileged `loop_app` `DATABASE_URL`; give the privileged `loop_worker` `DATABASE_WORKER_URL` only to the queue-consumer platform.
