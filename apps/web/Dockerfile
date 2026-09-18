@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 COPY apps/web/package.json apps/web/package.json
@@ -6,11 +6,14 @@ COPY packages/database/package.json packages/database/package.json
 RUN npm ci
 COPY apps/web apps/web
 RUN npm run build -w @loop/web
-FROM node:24-alpine
+FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache chromium && chromium-browser --version
-ENV CHROME_PATH=/usr/bin/chromium-browser
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium \
+  && chromium --version \
+  && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/bin/chromium
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static

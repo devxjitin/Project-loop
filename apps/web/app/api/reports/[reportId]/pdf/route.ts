@@ -9,7 +9,7 @@ import { setTenantContext, withTransaction } from '@/lib/server/db';
 
 export const runtime = 'nodejs';
 const run = promisify(execFile);
-const defaultBrowserPath = process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium-browser';
+const defaultBrowserPath = process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium';
 const escape = (value: string) => value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ reportId: string }> }) {
