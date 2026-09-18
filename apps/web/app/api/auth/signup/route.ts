@@ -16,14 +16,15 @@ export async function POST(request: NextRequest) {
   if (!organizationName) return Response.json({ error: 'Organization name is required.' }, { status: 400 });
   try {
     const user = await withTransaction(async (client) => {
+      // Ids are generated here because INSERT ... RETURNING is checked against the SELECT policies, which
+      // require a membership row that does not exist until sign-up finishes.
       const tenantId = randomUUID();
-      // RETURNING is checked against the tenants SELECT policy, so the tenant context must exist before the insert.
+      const userId = randomUUID();
       await setTenantContext(client, tenantId);
-      const tenant = await client.query<{ id: string; name: string }>('INSERT INTO tenants (id, name) VALUES ($1, $2) RETURNING id, name', [tenantId, organizationName]);
-      const created = await client.query<{ id: string; email: string }>('INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id, email', [email, await hashPassword(password), body.displayName?.trim() ?? null]);
-      await setTenantContext(client, tenant.rows[0].id);
-      await client.query('INSERT INTO memberships (tenant_id, user_id, role) VALUES ($1, $2, $3)', [tenant.rows[0].id, created.rows[0].id, 'admin']);
-      return { ...created.rows[0], tenantId: tenant.rows[0].id, tenantName: tenant.rows[0].name, role: 'admin' as const };
+      await client.query('INSERT INTO tenants (id, name) VALUES ($1, $2)', [tenantId, organizationName]);
+      await client.query('INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)', [userId, email, await hashPassword(password), body.displayName?.trim() ?? null]);
+      await client.query('INSERT INTO memberships (tenant_id, user_id, role) VALUES ($1, $2, $3)', [tenantId, userId, 'admin']);
+      return { id: userId, email, tenantId, tenantName: organizationName, role: 'admin' as const };
     });
     return Response.json({ user, ...issueTokens({ sub: user.id, tenantId: user.tenantId, role: user.role }) }, { status: 201 });
   } catch (error) {
