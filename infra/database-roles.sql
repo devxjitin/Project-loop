@@ -25,3 +25,13 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO loop_app
 -- the worker role is intentionally privileged and must never be configured for
 -- Next.js request handlers.
 SELECT rolname, rolbypassrls, rolsuper FROM pg_roles WHERE rolname IN ('loop_app', 'loop_worker');
+
+-- The analytics worker runs REFRESH MATERIALIZED VIEW, which only an owner may do. Transfer the views to
+-- loop_worker (it needs CREATE on the schema only for the duration of the ownership change). loop_app keeps read access.
+GRANT loop_worker TO CURRENT_USER;
+GRANT CREATE ON SCHEMA public TO loop_worker;
+ALTER MATERIALIZED VIEW analytics_sentiment_daily OWNER TO loop_worker;
+ALTER MATERIALIZED VIEW analytics_theme_counts OWNER TO loop_worker;
+ALTER MATERIALIZED VIEW analytics_channel_counts OWNER TO loop_worker;
+REVOKE CREATE ON SCHEMA public FROM loop_worker;
+GRANT SELECT ON analytics_sentiment_daily, analytics_theme_counts, analytics_channel_counts TO loop_app;
