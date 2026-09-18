@@ -50,7 +50,7 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Add reusable toast/notification system.
 - [x] Add reusable `Skeleton` loading primitive.
 - [x] Add reusable badge/status primitive.
-- [ ] Refactor hand-built page controls to use the component kit.
+- [x] Refactor hand-built page controls to use the component kit.
 
 ### First-run and empty states
 

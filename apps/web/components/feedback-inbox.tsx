@@ -10,6 +10,8 @@ import { ThemeTag } from "@/components/theme-tag";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DataLoadError } from "@/components/ui/data-load-error";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import Link from "next/link";
 
 type Theme = { id: string; name: string };
@@ -87,14 +89,14 @@ export function FeedbackInbox() {
             aria-hidden
             className="absolute left-3 top-2.5 size-4 text-slate-400"
           />
-          <input
+          <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search feedback"
             className="w-full rounded-md border py-2 pl-9 pr-3 text-sm"
           />
         </label>
-        <select
+        <Select
           aria-label="Source"
           value={source}
           onChange={(event) => setSource(event.target.value)}
@@ -104,8 +106,8 @@ export function FeedbackInbox() {
           <option value="zendesk">Zendesk</option>
           <option value="typeform">Typeform</option>
           <option value="generic_webhook">Webhook</option>
-        </select>
-        <select
+        </Select>
+        <Select
           aria-label="Sentiment"
           value={sentiment}
           onChange={(event) => setSentiment(event.target.value)}
@@ -115,8 +117,8 @@ export function FeedbackInbox() {
           <option value="positive">Positive</option>
           <option value="neutral">Neutral</option>
           <option value="negative">Negative</option>
-        </select>
-        <select
+        </Select>
+        <Select
           aria-label="Theme"
           value={themeId}
           onChange={(event) => setThemeId(event.target.value)}
@@ -128,7 +130,7 @@ export function FeedbackInbox() {
               {theme.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="mt-3 flex gap-2">
         <Button onClick={() => void load()} disabled={!token}>

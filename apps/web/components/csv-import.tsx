@@ -318,13 +318,13 @@ export function CsvImport() {
                     {new Date(job.created_at).toLocaleString()}
                   </span>
                   {role === "admin" && (
-                    <button
+                    <Button
                       onClick={() => setDeleteCandidate(job)}
                       aria-label={"Delete " + job.original_filename}
                       className="rounded-md p-2 text-rose-600 hover:bg-rose-50"
                     >
                       <Trash2 className="size-4" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataLoadError } from "@/components/ui/data-load-error";
+import { Input } from "@/components/ui/input";
 
 type Report = {
   id: string;
@@ -175,7 +176,7 @@ export function ReportGenerator() {
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <label className="text-sm">
             From
-            <input
+            <Input
               type="date"
               value={from}
               onChange={(event) => setFrom(event.target.value)}
@@ -184,7 +185,7 @@ export function ReportGenerator() {
           </label>
           <label className="text-sm">
             To
-            <input
+            <Input
               type="date"
               value={to}
               onChange={(event) => setTo(event.target.value)}
@@ -264,7 +265,7 @@ export function ReportGenerator() {
                       <div className="flex flex-wrap items-end gap-2">
                         <label className="text-xs font-medium text-slate-600">
                           New link expires
-                          <input
+                          <Input
                             aria-label="Share link expiry"
                             type="date"
                             min={dateForInput(new Date())}

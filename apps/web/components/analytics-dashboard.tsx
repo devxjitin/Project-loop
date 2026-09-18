@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DataLoadError } from "@/components/ui/data-load-error";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -97,7 +98,7 @@ export function AnalyticsDashboard() {
       <div className="mt-5 flex flex-wrap items-end gap-3">
         <label className="text-sm">
           From
-          <input
+          <Input
             type="date"
             value={from}
             onChange={(event) => setFrom(event.target.value)}
@@ -106,7 +107,7 @@ export function AnalyticsDashboard() {
         </label>
         <label className="text-sm">
           To
-          <input
+          <Input
             type="date"
             value={to}
             onChange={(event) => setTo(event.target.value)}

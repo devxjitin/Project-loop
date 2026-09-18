@@ -6,6 +6,7 @@ import { useSession } from "@/components/auth-session";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataLoadError } from "@/components/ui/data-load-error";
+import { Input } from "@/components/ui/input";
 
 type Connector = {
   id: string;
@@ -109,7 +110,7 @@ export function ConnectorSettings() {
       {canManage && (
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-            <input
+            <Input
               aria-label="Zendesk subdomain"
               value={subdomain}
               onChange={(e) => setSubdomain(e.target.value)}
