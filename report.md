@@ -10,7 +10,7 @@ The intended users are product managers, support leads, CX leaders, and organiza
 
 | Area | What it does |
 | --- | --- |
-| Feedback ingestion | Imports CSV feedback and accepts Zendesk, Typeform, and signed generic-webhook data. |
+| Feedback ingestion | Imports tenant-scoped CSV feedback uploaded by workspace admins. |
 | Feedback inbox | Searches and filters feedback by text, channel, date, sentiment, and theme. |
 | AI enrichment | Classifies sentiment, creates embeddings, and clusters recurring product themes. |
 | Analytics | Shows sentiment trends, top themes, and volume by feedback channel. |
@@ -22,7 +22,7 @@ The intended users are product managers, support leads, CX leaders, and organiza
 
 ```text
 Feedback source
-  -> ingestion / signed webhook
+  -> CSV ingestion
   -> PostgreSQL feedback_items (tenant-scoped)
   -> workers: sentiment + embedding + theme clustering
   -> analytics materialized views and feedback inbox
@@ -33,8 +33,7 @@ Feedback source
 ### Data ingestion
 
 - CSV uploads create an ingestion job and use object storage for the file.
-- Zendesk uses OAuth; credentials are AES-256-GCM encrypted before being stored in the connector record in PostgreSQL.
-- Typeform and generic webhook endpoints verify a per-connector HMAC signature before accepting data.
+- External connector credentials and inbound webhook endpoints are intentionally not part of the CSV-only launch.
 - Ingestion is idempotent where sources provide an external identifier.
 
 ### AI pipeline
@@ -60,8 +59,8 @@ A report first stores a snapshot of the requested period's dashboard aggregates,
 
 | Role | Permissions |
 | --- | --- |
-| Admin | Manages members, roles, invitations, connectors, report generation, report schedules, and sharing. |
-| Editor | Reads the workspace and can run permitted feedback/connector workflows such as synchronization. |
+| Admin | Manages members, roles, invitations, CSV uploads, report generation, report schedules, and sharing. |
+| Editor | Reads the workspace and can view feedback and insights; CSV uploads are admin-only. |
 | Viewer | Reads feedback, analytics, Q&A, and reports; cannot use write endpoints or see management controls. |
 
 Every tenant-owned table uses PostgreSQL Row-Level Security. Application queries bind the authenticated tenant ID into the transaction, and API queries also use explicit tenant predicates. Revoking or changing a member role is checked against the database on protected write paths so that changes take effect immediately.
@@ -124,21 +123,10 @@ For host mode, configure `apps/web/.env.local` with a localhost `DATABASE_URL`, 
 
 ### Bring in feedback
 
-1. As an Admin, open **Connectors**.
-2. Connect Zendesk, or create a Typeform/generic webhook endpoint.
-3. For generic webhooks, send JSON such as:
-
-```json
-{
-  "text": "The export is too slow",
-  "externalId": "evt-123",
-  "author": "Sam",
-  "occurredAt": "2026-09-17T10:00:00Z"
-}
-```
-
-4. Sign the raw body using the connector's secret and place the HMAC in `X-Loop-Signature`.
-5. Wait for the background workers to enrich new feedback, or invoke the configured internal backfill endpoint as an operator.
+1. As a workspace Admin, open **Upload CSV**.
+2. Choose a CSV export, give the dataset a clear name, and select the column containing customer feedback.
+3. Upload the file and review its status in **Recent uploads**.
+4. Wait for the background workers to enrich new feedback, or invoke the configured internal backfill endpoint as an operator.
 
 ### Explore feedback and analytics
 
@@ -184,7 +172,7 @@ All private APIs require `Authorization: Bearer <access-token>` unless marked ot
 ## 8. Security and operations checklist
 
 - Use long, unique production values for `JWT_SECRET`, `AI_SERVICE_TOKEN`, `CRON_SECRET`, and `CONNECTOR_STATE_SECRET`.
-- Never expose Gemini, database, Vercel Blob, or connector credentials to the browser.
+- Never expose Gemini, database, or Vercel Blob credentials to the browser.
 - Use a separate worker database role with `BYPASSRLS` only for trusted scheduled workers.
 - Set `SENTRY_DSN`, configure an external one-minute uptime check for `/api/health`, and route alerts to an on-call rotation.
 - Run `npm run test --workspace=@loop/web` before release; it includes RLS and tenant-context regression checks.

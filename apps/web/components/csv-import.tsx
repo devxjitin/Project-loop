@@ -52,7 +52,7 @@ export function CsvImport() {
   const [progress, setProgress] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const canUpload = role === "admin" || role === "editor";
+  const canUpload = role === "admin";
 
   const load = async () => {
     if (!token) return;
@@ -276,7 +276,7 @@ export function CsvImport() {
           </>
         ) : (
           <p className="mt-6 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
-            Only admins and editors can upload CSV files.
+            Only workspace admins can upload CSV files.
           </p>
         )}
         <div className="mt-8 border-t pt-5">

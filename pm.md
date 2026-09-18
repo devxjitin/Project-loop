@@ -31,7 +31,7 @@ Primary market at launch: B2B SaaS companies (50–1000 employees) with enough f
 
 ## MVP Feature Scope
 
-1. **Multi-channel ingestion** — CSV/manual upload at launch, plus two live integrations (e.g. Zendesk or Intercom for support tickets, Typeform or a webhook for surveys)
+1. **CSV ingestion** — workspace admins upload customer-feedback CSV files and select the review-text column.
 2. **AI sentiment classification** — positive / neutral / negative per feedback item, run automatically on ingest
 3. **AI theme/topic tagging** — automatic clustering of feedback into recurring topics, no manual tagging required
 4. **Centralized feedback inbox** — searchable, filterable list (by channel, sentiment, date, theme)
@@ -50,14 +50,14 @@ Primary market at launch: B2B SaaS companies (50–1000 employees) with enough f
 - Advanced access control: custom roles, SSO/SAML, audit logs
 - Google OAuth and account linking
 - Slack/Teams/email digest notifications
-- Public API and outbound webhooks for third-party integration
+- Third-party integrations and public APIs are deferred until after the CSV-only launch.
 - Multi-language feedback support
 - Predictive signals linking feedback sentiment to churn risk
 
 ## Out of Scope (Non-Goals)
 
-- **Not a helpdesk/ticketing system** — LOOP integrates with Zendesk/Intercom, it doesn't replace them
-- **Not a survey builder** — integrates with Typeform/SurveyMonkey rather than building survey design tools
+- **Not a helpdesk/ticketing system** — LOOP analyzes uploaded feedback; it does not replace support tooling.
+- **Not a survey builder** — LOOP imports CSV exports rather than building survey design tools.
 - **No native mobile apps at MVP** — responsive web only
 - **No on-prem/self-hosted deployment at MVP** — cloud SaaS only
 - **No real-time streaming analytics at MVP** — near-real-time (minutes, not seconds) is sufficient for the target use cases
@@ -72,7 +72,7 @@ Primary market at launch: B2B SaaS companies (50–1000 employees) with enough f
 | LLM | Google Gemini API | Sentiment classification, theme summarization, the AI Q&A layer, and Voice-of-Customer report generation |
 | Embeddings / semantic search | Gemini Embedding + pgvector or a dedicated vector DB (Pinecone/Qdrant) | Powers the AI Q&A citations and semantic clustering of themes |
 | Primary database | PostgreSQL | Relational integrity for tenants/users/roles; row-level security enforces tenant isolation at the DB layer |
-| Async jobs / queue | Redis + BullMQ (Node) or Celery (Python) | Ingestion and AI classification run async so uploads/webhooks don't block |
+| Async jobs / queue | Redis + BullMQ (Node) or Celery (Python) | Ingestion and AI classification run asynchronously so uploads do not block |
 | Auth | Clerk or Auth0 for MVP | Multi-tenant auth and RBAC out of the box; SSO/SAML addable later without a rewrite |
 | Infra | Vercel + managed Postgres/Redis + worker host | Vercel deploys the web/API from Git; Postgres, Redis, and long-running AI workers remain managed external services |
 | Observability | Sentry (errors) + Datadog (metrics/logs) | Multi-tenant systems need to catch tenant-specific failures fast |
@@ -82,11 +82,11 @@ This is a two-service split (Node core API + Python AI service) rather than one 
 
 ## High-Level Architecture
 
-Feedback flows in through connectors, gets classified and embedded asynchronously, and lands in two stores: Postgres for structured records and a vector store for semantic search that powers the AI Q&A and reports.
+Feedback flows in through administrator CSV uploads, gets classified and embedded asynchronously, and lands in two stores: Postgres for structured records and a vector store for semantic search that powers the AI Q&A and reports.
 
 ```mermaid
 flowchart LR
-  A[Connectors:<br/>CSV, Zendesk,<br/>Typeform, App Stores] --> B[Ingestion Queue]
+  A[Admin CSV upload] --> B[Ingestion Queue]
   B --> C[AI Pipeline:<br/>sentiment + topics + embeddings]
   C --> D[(Postgres:<br/>structured data)]
   C --> E[(Vector store:<br/>embeddings)]
@@ -121,7 +121,7 @@ Every table in Postgres carries a `tenant_id`, enforced via row-level security, 
 
 - **LLM cost at scale:** classification cost per feedback item needs a model before pricing tiers are set — high-volume tenants could make per-seat pricing unprofitable.
 - **Data privacy:** feedback may contain PII/PHI; sending it to a third-party LLM API needs legal review before GA.
-- **Integration reliability:** third-party APIs (Zendesk, app stores) can rate-limit or change without notice — connectors need retry/backoff and monitoring from day one.
+- **Import reliability:** malformed CSV exports must fail clearly, preserve the source file, and provide actionable retry guidance.
 - **Open question:** single LLM provider, or a pluggable model layer per tenant/region?
 - **Open question:** pricing model — per seat, per feedback volume, or flat per-tenant fee?
 - **Open question:** build custom topic clustering, or lean entirely on LLM-based clustering for MVP?

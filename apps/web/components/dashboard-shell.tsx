@@ -8,7 +8,6 @@ import {
   Home,
   Inbox,
   LayoutDashboard,
-  Link2,
   LogOut,
   Menu,
   UploadCloud,
@@ -26,7 +25,6 @@ const navigation = [
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/ask", label: "Ask LOOP", icon: Bot },
   { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/connectors", label: "Connectors", icon: Link2 },
   { href: "/upload", label: "Upload CSV", icon: UploadCloud },
 ];
 

@@ -10,7 +10,7 @@ Before launch, run the staging workload below against an anonymized tenant with 
 
 ## Scheduled jobs
 
-Call the internal connector poll and report schedule endpoints with `CRON_SECRET`. Investigate any nonzero failed count immediately.
+Call the internal report-schedule endpoint with `CRON_SECRET`. Investigate any nonzero failed count immediately.
 
 ## Database credentials and roles
 

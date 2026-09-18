@@ -43,7 +43,6 @@ services:
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
       JWT_SECRET: ${JWT_SECRET}
       BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN}
-      CONNECTOR_ENCRYPTION_KEY: ${CONNECTOR_ENCRYPTION_KEY}
       APP_URL: ${APP_URL:-http://localhost:3000}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
@@ -65,7 +64,6 @@ services:
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
-      CONNECTOR_ENCRYPTION_KEY: ${CONNECTOR_ENCRYPTION_KEY}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}

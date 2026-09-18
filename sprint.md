@@ -57,35 +57,18 @@ Each task has an estimate in dev-days and an acceptance criterion (how you know 
 
 ---
 
-## Sprint 3 — Ingestion: Live Connector #1 (Zendesk or Intercom)
+## Sprint 3 — CSV ingestion hardening
 
-**Goal:** new support tickets show up in LOOP automatically, no CSV needed.
+**Goal:** administrators can reliably import customer-feedback exports without configuring third-party credentials.
 
 | Task | Discipline | Est | Acceptance criteria |
 | --- | --- | --- | --- |
-| `connectors` table (type, tenant, encrypted credentials ref, status, last_synced_at) | DB | 0.5d | Credentials are never stored in plaintext in the DB |
-| OAuth connect flow (redirect, callback, token storage in Secrets Manager) | Backend | 1.5d | Revoking access in Zendesk is detected on next sync (not silently retried forever) |
-| Webhook receiver + signature verification | Backend | 1d | A forged webhook payload is rejected |
-| Polling fallback job (for tenants who don't set up webhooks) | Backend | 1d | Missed webhook events are caught within 15 minutes by polling |
-| Map external ticket schema → `feedback_items`, dedupe on `external_id` | Backend | 1d | Re-running a sync doesn't create duplicate rows |
-| Connector settings page (connect, status, last sync, disconnect) | Frontend | 1d | A broken connector shows an error state, not a silent gap |
+| Admin-only CSV upload authorization | Backend | 0.5d | Editors and viewers cannot create ingestion jobs |
+| Column selection and validation | Backend / Frontend | 1d | Invalid files or missing review columns fail clearly |
+| Upload history and retry guidance | Frontend | 0.5d | A user can see each dataset's state and recover from a failed upload |
+| Tenant-scoped import jobs | DB | 0.5d | One tenant cannot read or alter another tenant's uploads |
 
 *Dependency: Sprint 2's ingestion pipeline (queue, `feedback_items`).*
-
----
-
-## Sprint 4 — Ingestion: Live Connector #2 (Typeform / generic webhook)
-
-**Goal:** survey responses flow in the same way tickets do — proves the connector pattern generalizes.
-
-| Task | Discipline | Est | Acceptance criteria |
-| --- | --- | --- | --- |
-| Generic inbound webhook endpoint + per-tenant secret | Backend | 1d | Two tenants' webhook URLs can't be swapped to inject data cross-tenant |
-| Typeform payload → `feedback_items` mapping | Backend | 1d | A multi-question response maps to one feedback item per free-text answer |
-| Webhook setup UI (URL + secret to paste into Typeform) | Frontend | 1d | A non-technical user can wire it up from the settings page alone |
-| Connector error/retry dashboard entry reused from Sprint 3 | Frontend | 0.5d | Same status UI works for both connector types |
-
-*Dependency: Sprint 3 connector pattern.*
 
 ---
 

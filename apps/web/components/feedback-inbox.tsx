@@ -103,9 +103,7 @@ export function FeedbackInbox() {
           className="rounded-md border px-3 py-2 text-sm"
         >
           <option value="">All channels</option>
-          <option value="zendesk">Zendesk</option>
-          <option value="typeform">Typeform</option>
-          <option value="generic_webhook">Webhook</option>
+          <option value="csv">CSV upload</option>
         </Select>
         <Select
           aria-label="Sentiment"
@@ -163,10 +161,10 @@ export function FeedbackInbox() {
             description="Connect a source or upload a CSV to start seeing customer feedback here."
             action={
               <Link
-                href="/connectors"
+                href="/upload"
                 className="inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
               >
-                Connect a source
+                Upload a CSV
               </Link>
             }
           />

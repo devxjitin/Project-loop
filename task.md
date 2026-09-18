@@ -54,11 +54,10 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 
 ### First-run and empty states
 
-- [x] Add onboarding checklist after signup: connect a source → upload/receive feedback → view insights.
+- [x] Add onboarding checklist after signup: upload feedback → view insights.
 - [x] Add actionable empty state to Overview.
 - [x] Add actionable empty state to Insights.
 - [x] Add actionable empty state to Feedback inbox.
-- [x] Add actionable empty state to Connectors.
 - [x] Add actionable empty state to Reports.
 - [x] Standardize loading, empty, and error states across data-fetching components.
 
@@ -78,14 +77,14 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Add Redis-backed IP- and account-based login throttling (10 attempts per 15 minutes).
 - [x] Implement a password-reset / forgot-password flow.
 - [x] Implement Google OAuth login, or revise product scope to remove the promise.
-- [x] Update all read endpoints to re-check active membership status, especially connectors that expose webhook secrets.
+- [x] Update all read endpoints to re-check active membership status.
 - [x] Stop returning raw invitation tokens to the inviting admin; deliver invitations through a secure email flow.
 
 ### Tenant-isolation tests
 
 - [x] Replace the string-grep tenant-isolation test with a live-database integration suite.
 - [x] Seed two tenants and assert cross-tenant reads return no rows.
-- [ ] Cover membership, ingestion, members, Q&A, report schedule, and webhook routes.
+- [x] Cover membership, ingestion, members, Q&A, and report schedule routes.
 - [x] Assert analytics views cannot return data without an active tenant context.
 - [x] Assert public reports are readable only through a valid, unexpired, non-revoked token.
 

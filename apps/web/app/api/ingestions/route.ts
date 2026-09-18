@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const claims = await requireActiveAuth(request);
-    requireRole(claims, 'admin', 'editor');
+    requireRole(claims, 'admin');
     const body = await request.json() as StartIngestionInput;
     const filename = body.filename?.trim();
     const contentType = body.contentType || 'text/csv';

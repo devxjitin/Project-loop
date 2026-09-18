@@ -16,17 +16,9 @@ Open `http://localhost:3000`. Health checks are available at:
 
 For host-based development, run `npm install` at the repository root, then `npm run dev`. Database migrations run with `npm run migrate`. The AI service can be run separately with `pip install -r apps/ai-service/requirements.txt` and `uvicorn app.main:app --app-dir apps/ai-service --reload`.
 
-## Zendesk connector
+## CSV ingestion
 
-Sprint 3 adds a Zendesk OAuth connector. Set `ZENDESK_CLIENT_ID`, `ZENDESK_CLIENT_SECRET`, `ZENDESK_OAUTH_CALLBACK_URL`, `CONNECTOR_STATE_SECRET`, `CONNECTOR_ENCRYPTION_KEY`, and `CRON_SECRET` from `.env.example`. Zendesk access tokens are encrypted with AES-256-GCM before being stored in the connector row in Postgres.
-
-Schedule `POST /api/internal/connectors/poll` every 15 minutes with `Authorization: Bearer <CRON_SECRET>`. Configure `DATABASE_WORKER_URL` with a worker-only Postgres role that has `BYPASSRLS`; it is deliberately used only by this scheduled endpoint. Admins can copy the signed webhook URL and secret from the connector settings page after connecting Zendesk.
-
-## Typeform and generic webhooks
-
-Create a Typeform or generic webhook connector from the settings page. Each connector gets a tenant-bound URL and an independent signing secret. Configure Typeform with that URL and secret; LOOP verifies its `Typeform-Signature` (`sha256=<base64 HMAC of raw body>`) and writes one feedback item for each text, email, or URL response in a submission. Replays are idempotent using the Typeform response token and field ID.
-
-Generic producers send `POST` requests to the issued URL with `X-Loop-Signature: sha256=<base64 HMAC of raw body>` and JSON such as `{"text":"The export is too slow","externalId":"evt-123","author":"Sam","occurredAt":"2026-09-17T10:00:00Z"}`. `externalId` is recommended for explicit idempotency. The URL's tenant and connector IDs are both verified under RLS before payload processing.
+CSV upload is LOOP's sole feedback-ingestion path. Workspace admins upload a CSV from **Upload CSV**, name the dataset, and choose the column containing customer feedback. The API validates file type and size, creates a tenant-scoped ingestion job, and imports only the selected feedback column.
 
 ## Sentiment classification
 

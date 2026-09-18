@@ -32,7 +32,6 @@ test('live database prevents cross-tenant access and protects public reports', a
     await client.query("INSERT INTO memberships (tenant_id, user_id, role, status) VALUES ($1, $2, 'admin', 'active')", [tenantB.id, userB.id]);
     await client.query("INSERT INTO ingestion_jobs (tenant_id, storage_key, original_filename, size_bytes) VALUES ($1, 'rls/' || gen_random_uuid(), 'test.csv', 1)", [tenantB.id]);
     const [feedbackB] = await rows(client, "INSERT INTO feedback_items (tenant_id, source, raw_text) VALUES ($1, 'rls-test', 'Tenant B feedback') RETURNING id", [tenantB.id]);
-    const [connectorB] = await rows(client, "INSERT INTO connectors (tenant_id, type) VALUES ($1, 'zendesk') RETURNING id", [tenantB.id]);
     const [sessionB] = await rows(client, 'INSERT INTO qa_sessions (tenant_id, user_id) VALUES ($1, $2) RETURNING id', [tenantB.id, userB.id]);
     await client.query("INSERT INTO qa_messages (tenant_id, session_id, role, content) VALUES ($1, $2, 'user', 'Tenant B question')", [tenantB.id, sessionB.id]);
     await client.query("INSERT INTO report_schedules (tenant_id, cadence) VALUES ($1, 'weekly')", [tenantB.id]);
@@ -44,7 +43,6 @@ test('live database prevents cross-tenant access and protects public reports', a
       ['memberships', 'SELECT id FROM memberships WHERE tenant_id = $1', [tenantB.id]],
       ['ingestion jobs', 'SELECT id FROM ingestion_jobs WHERE tenant_id = $1', [tenantB.id]],
       ['feedback', 'SELECT id FROM feedback_items WHERE id = $1', [feedbackB.id]],
-      ['connectors', 'SELECT id FROM connectors WHERE id = $1', [connectorB.id]],
       ['Q&A sessions', 'SELECT id FROM qa_sessions WHERE id = $1', [sessionB.id]],
       ['Q&A messages', 'SELECT id FROM qa_messages WHERE session_id = $1', [sessionB.id]],
       ['report schedules', 'SELECT tenant_id FROM report_schedules WHERE tenant_id = $1', [tenantB.id]],
