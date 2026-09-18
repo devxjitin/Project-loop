@@ -37,7 +37,7 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Surface 30-day public-share link creation for admins.
 - [x] Copy created share links to the clipboard when supported and display the link in the page.
 - [x] Add share-link management: list active links, revoke links, and set an expiry.
-- [ ] Add progress/polling feedback while a report is being generated.
+- [x] Add progress/polling feedback while a report is being generated.
 
 ### Design system
 
@@ -123,7 +123,7 @@ Status is based on the 2026-09-18 engineering review and the work completed in t
 - [x] Remove the unused `apps/api/` scaffold after confirming it has no consumers.
 - [x] Remove or use `packages/shared-types`.
 - [x] Delete `tmp-web.log` and ignore `*.log` files.
-- [ ] Establish the initial Git commit once the desired baseline is reviewed.
+- [x] Establish the initial Git commit once the desired baseline is reviewed.
 
 ## Verification log
 
