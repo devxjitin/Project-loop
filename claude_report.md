@@ -1,6 +1,6 @@
-# Project LOOP — Full Engineering Review
+# Project LOOP — Full Engineering Review (Historical Snapshot)
 
-> **Scope update (2026-09-18):** This review predates the CSV-only product decision. Zendesk, Typeform, generic webhooks, connector credentials, polling, and their UI/API surfaces have been removed. References to those capabilities below are historical review context, not current product requirements.
+> **Scope and status update (2026-09-18):** This is the original engineering-review snapshot, not a current-state report. Its findings have been tracked in `task.md`; implemented items are checked there and verified against the repository. Project LOOP is now CSV-only: Zendesk, Typeform, generic webhooks, connector credentials, polling, and their UI/API surfaces have been removed. References below to those capabilities, to pre-fix defects, and to the original “pre-alpha” verdict are historical review context—not current product requirements or current findings. The outstanding deployment prerequisites remain explicitly unchecked in `task.md`.
 
 *Reviewed 2026-09-18. Scope: `apps/web`, `apps/ai-service`, `packages/database`, `infra`, `docs`, CI. Repo has zero git commits at time of review (first, uncommitted build).*
 
