@@ -1,88 +1,17 @@
-# Background queue consumers. The AI service (loop-ai-service) and Redis (loop-redis)
-# already exist on Render, so they are intentionally not declared here.
+# One background worker that runs all five queue consumers (apps/web/workers/all.ts).
+# The AI service (loop-ai-service) and Redis (loop-redis) already exist on Render,
+# so they are intentionally not declared here.
 # Secrets marked `sync: false` are prompted for when the Blueprint is applied:
 #   DATABASE_WORKER_URL  the privileged loop_worker Neon connection string
 #   REDIS_URL            the external rediss:// URL of loop-redis
 #   AI_SERVICE_TOKEN     must equal AI_SERVICE_TOKEN on loop-ai-service and Vercel
 services:
   - type: worker
-    name: loop-sentiment-worker
+    name: loop-workers
     runtime: docker
     dockerContext: .
     dockerfilePath: apps/web/Dockerfile
-    dockerCommand: node --import tsx apps/web/workers/sentiment.ts
-    region: virginia
-    plan: starter
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_WORKER_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: AI_SERVICE_URL
-        value: https://loop-ai-service-801c.onrender.com
-      - key: AI_SERVICE_TOKEN
-        sync: false
-  - type: worker
-    name: loop-embedding-worker
-    runtime: docker
-    dockerContext: .
-    dockerfilePath: apps/web/Dockerfile
-    dockerCommand: node --import tsx apps/web/workers/embeddings.ts
-    region: virginia
-    plan: starter
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_WORKER_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: AI_SERVICE_URL
-        value: https://loop-ai-service-801c.onrender.com
-      - key: AI_SERVICE_TOKEN
-        sync: false
-  - type: worker
-    name: loop-theme-worker
-    runtime: docker
-    dockerContext: .
-    dockerfilePath: apps/web/Dockerfile
-    dockerCommand: node --import tsx apps/web/workers/themes.ts
-    region: virginia
-    plan: starter
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_WORKER_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: AI_SERVICE_URL
-        value: https://loop-ai-service-801c.onrender.com
-      - key: AI_SERVICE_TOKEN
-        sync: false
-  - type: worker
-    name: loop-analytics-worker
-    runtime: docker
-    dockerContext: .
-    dockerfilePath: apps/web/Dockerfile
-    dockerCommand: node --import tsx apps/web/workers/analytics.ts
-    region: virginia
-    plan: starter
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_WORKER_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-  - type: worker
-    name: loop-report-schedule-worker
-    runtime: docker
-    dockerContext: .
-    dockerfilePath: apps/web/Dockerfile
-    dockerCommand: node --import tsx apps/web/workers/report-schedule.ts
+    dockerCommand: node --import tsx apps/web/workers/all.ts
     region: virginia
     plan: starter
     envVars:
