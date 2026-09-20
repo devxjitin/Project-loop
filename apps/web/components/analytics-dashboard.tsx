@@ -202,7 +202,7 @@ export function AnalyticsDashboard() {
         )}
         {refreshing && (
           <span className="inline-flex items-center gap-1.5 text-xs text-slate-500" role="status">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Updating…
+            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Updatingâ€¦
           </span>
         )}
       </div>
