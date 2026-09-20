@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 import asyncio
@@ -114,7 +113,6 @@ def gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 def provider_error(error: Exception, message: str) -> HTTPException:
-    logging.getLogger("uvicorn.error").error("%s: %s: %s", message, type(error).__name__, error)
     return HTTPException(status_code=429 if getattr(error, "code", None) == 429 else 502, detail=message)
 
 @app.get("/health")
@@ -128,7 +126,7 @@ async def classify_sentiment(request: ClassifyRequest, x_internal_token: str | N
 Return JSON only, in the form {\"classifications\":[{\"id\":\"...\",\"sentiment\":\"positive|neutral|negative\"}]}.
 Use neutral for factual, mixed, or unclear feedback; do not add explanation.\n\nItems:\n""" + json.dumps([item.model_dump() for item in request.items])
     try:
-        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-2.5-flash"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=ClassifyResponse, temperature=0))
+        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-3.5-flash-lite"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=ClassifyResponse, temperature=0))
         content = response.text or ''
         return ClassifyResponse(classifications=parse_classifications(content, {item.id for item in request.items}))
     except HTTPException: raise
@@ -167,7 +165,7 @@ Every factual claim must be immediately followed by one or more source markers i
 If the sources do not support an answer, say exactly: "I don't know based on the available feedback." Return JSON with `answer` and `citations`; citations must list every source ID used.
 Question:\n""" + request.question + "\n\nSources:\n" + json.dumps([source.model_dump() for source in request.sources])
     try:
-        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-2.5-flash"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=AnswerResponse, temperature=0))
+        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-3.5-flash-lite"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=AnswerResponse, temperature=0))
         answer = AnswerResponse.model_validate_json(response.text or '')
         cited = {citation.feedback_id for citation in answer.citations}
         markers = set(re.findall(r"\[source:([^\]]+)\]", answer.answer))
@@ -185,7 +183,7 @@ Use headings: Executive summary, Sentiment, Top themes, Customer voices, Recomme
 Explain changes and tradeoffs in plain language for a non-technical executive. Do not invent metrics, quotes, causes, or recommendations not supported by the input. Keep it under 700 words.
 Data:\n""" + json.dumps(request.model_dump())
     try:
-        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-2.5-flash"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=ReportResponse, temperature=0.2))
+        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-3.5-flash-lite"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=ReportResponse, temperature=0.2))
         return ReportResponse.model_validate_json(response.text or '')
     except HTTPException: raise
     except Exception as error: raise provider_error(error, "Gemini report generation failed") from error
@@ -196,7 +194,7 @@ async def label_clusters(clusters: list[list[ThemeItem]]) -> list[str]:
 Return JSON only: {\"labels\":[\"...\"]}. Use specific plain-language themes, never cluster numbers.
 Clusters:\n""" + json.dumps(examples)
     try:
-        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-2.5-flash"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
+        response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-3.5-flash-lite"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
         text = (response.text or '').strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         labels = json.loads(text)["labels"]
         if not isinstance(labels, list) or len(labels) != len(clusters) or not all(isinstance(label, str) and label.strip() for label in labels):

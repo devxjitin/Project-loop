@@ -13,3 +13,6 @@ __pycache__/
 apps/web/.local-storage/
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
+
+.vercel
+.env*
