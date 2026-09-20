@@ -183,7 +183,7 @@ export function CsvImport() {
         "failure",
         body.error ?? "Unable to delete dataset upload.",
       );
-    notify("success", "Dataset upload history deleted.");
+    notify("success", "Upload and its analytics deleted.");
     await load();
   }
 
@@ -340,7 +340,7 @@ export function CsvImport() {
         <ConfirmDialog
           open
           title="Delete upload history?"
-          description={`Delete ${deleteCandidate.original_filename}? This cannot be undone.`}
+          description={`Delete ${deleteCandidate.original_filename}? This also permanently deletes the feedback imported from this file and its analytics. This cannot be undone.`}
           confirmLabel="Delete upload"
           onClose={() => setDeleteCandidate(null)}
           onConfirm={() => remove(deleteCandidate)}

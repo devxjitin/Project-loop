@@ -38,6 +38,7 @@ type Theme = {
   total_count: number;
 };
 type Channel = { source: string; total_count: number };
+type Dataset = { id: string; original_filename: string; status: string; row_count: number };
 const iso = (offset: number) =>
   new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 
@@ -49,11 +50,13 @@ export function AnalyticsDashboard() {
   const [trend, setTrend] = useState<Trend[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [jobId, setJobId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const range = useMemo(
-    () => new URLSearchParams({ from, to }).toString(),
-    [from, to],
+    () => new URLSearchParams(jobId ? { from, to, jobId } : { from, to }).toString(),
+    [from, to, jobId],
   );
   const load = async () => {
     if (!token) return;
@@ -83,6 +86,13 @@ export function AnalyticsDashboard() {
   };
   useEffect(() => {
     void load(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, jobId]);
+  useEffect(() => {
+    if (!token) return;
+    void fetch("/api/ingestions", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => (response.ok ? response.json() : { jobs: [] }))
+      .then((body: { jobs: Dataset[] }) => setDatasets(body.jobs.filter((job) => job.status === "completed")))
+      .catch(() => setDatasets([]));
   }, [token]);
   const drillIntoTheme = (theme: Theme) => {
     router.push(`/feedback?themeId=${encodeURIComponent(theme.theme_id)}`);
@@ -96,6 +106,21 @@ export function AnalyticsDashboard() {
         </p>
       </div>
       <div className="mt-5 flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          Dataset
+          <select
+            value={jobId}
+            onChange={(event) => setJobId(event.target.value)}
+            className="ml-2 rounded-md border px-2 py-1.5"
+          >
+            <option value="">All files</option>
+            {datasets.map((dataset) => (
+              <option key={dataset.id} value={dataset.id}>
+                {dataset.original_filename} ({dataset.row_count} rows)
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="text-sm">
           From
           <Input
