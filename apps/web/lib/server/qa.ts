@@ -14,9 +14,10 @@ export async function generateGroundedAnswer(question: string, sources: QaSource
   const response = await fetch(`${process.env.AI_SERVICE_URL ?? 'http://ai-service:8000'}/v1/qa/answer`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ question: redactForModel(question), sources: sources.map(({ id, raw_text, source, occurred_at }) => ({ id, text: redactForModel(raw_text), source, occurred_at })) }) });
   if (!response.ok) throw new Error(`Grounded answer generation failed (${response.status}).`);
   const body = await response.json() as { answer?: string; citations?: Array<{ feedback_id: string }> };
-  if (!body.answer || !body.citations?.length) throw new Error('Answer service returned an invalid response.');
+  const citations = body.citations ?? [];
+  if (!body.answer || (!citations.length && body.answer.trim() !== "I don't know based on the available feedback.")) throw new Error('Answer service returned an invalid response.');
   const permitted = new Set(sources.map((source) => source.id));
-  if (body.citations.some((citation) => !permitted.has(citation.feedback_id))) throw new Error('Answer contains an ungrounded citation.');
-  return { answer: body.answer, citations: body.citations };
+  if (citations.some((citation) => !permitted.has(citation.feedback_id))) throw new Error('Answer contains an ungrounded citation.');
+  return { answer: body.answer, citations };
 }
 export { findSimilarFeedback };

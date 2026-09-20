@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useSession } from "@/components/auth-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,10 @@ export function QaChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Wake the AI service (free hosting suspends it when idle) while the user is still typing the first question.
+  useEffect(() => {
+    if (token) void fetch("/api/qa/warm", { headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
+  }, [token]);
   const ask = async (event: FormEvent) => {
     event.preventDefault();
     const text = question.trim();

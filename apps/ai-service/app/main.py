@@ -60,7 +60,7 @@ class Citation(BaseModel):
 
 class AnswerResponse(BaseModel):
     answer: str = Field(min_length=1, max_length=8_000)
-    citations: list[Citation] = Field(min_length=1, max_length=12)
+    citations: list[Citation] = Field(default_factory=list, max_length=12)
 
 class ReportRequest(BaseModel):
     period_start: str
@@ -86,6 +86,28 @@ class ThemeCluster(BaseModel):
 
 class ClusterResponse(BaseModel):
     themes: list[ThemeCluster]
+
+NO_ANSWER = "I don't know based on the available feedback."
+
+def marker_ids(text: str) -> list[str]:
+    """Source ids cited in the text, in order of first appearance. Accepts [source:a], [source: a] and [source:a, b]."""
+    found: list[str] = []
+    for group in re.findall(r"\[source:\s*([^\]]+)\]", text):
+        for part in re.split(r"[,\s]+", group):
+            if part and part not in found:
+                found.append(part)
+    return found
+
+def validate_answer(answer: "AnswerResponse", source_ids: set[str]) -> "AnswerResponse":
+    """Accept an honest "I don't know", or an answer whose every source marker points at a supplied source."""
+    markers = marker_ids(answer.answer)
+    if not markers:
+        if NO_ANSWER.lower() in answer.answer.lower():
+            return AnswerResponse(answer=NO_ANSWER, citations=[])
+        raise HTTPException(status_code=502, detail="Gemini answer did not provide valid grounded citations")
+    if not set(markers).issubset(source_ids):
+        raise HTTPException(status_code=502, detail="Gemini answer did not provide valid grounded citations")
+    return AnswerResponse(answer=answer.answer, citations=[Citation(feedback_id=source_id) for source_id in markers][:12])
 
 def require_internal_token(token: str | None) -> None:
     expected = os.environ.get("AI_SERVICE_TOKEN")
@@ -164,16 +186,11 @@ async def answer_question(request: AnswerRequest, x_internal_token: str | None =
     source_ids = {source.id for source in request.sources}
     prompt = """Answer the question using ONLY the supplied customer-feedback sources. Do not use outside knowledge.
 Every factual claim must be immediately followed by one or more source markers in the exact form [source:<feedback_id>].
-If the sources do not support an answer, say exactly: "I don't know based on the available feedback." Return JSON with `answer` and `citations`; citations must list every source ID used.
+The sources are the most relevant feedback that was found, not all of it. For questions about problems, complaints, requests or praise, summarise the recurring points visible across the sources, most common first, and cite each one. Only if none of the sources relate to the question, say exactly: "I don't know based on the available feedback." Return JSON with `answer` and `citations`; citations must list every source ID used.
 Question:\n""" + request.question + "\n\nSources:\n" + json.dumps([source.model_dump() for source in request.sources])
     try:
         response = await asyncio.to_thread(gemini_client().models.generate_content, model=os.environ.get("GEMINI_GENERATION_MODEL", "gemini-3.5-flash-lite"), contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=AnswerResponse, temperature=0))
-        answer = AnswerResponse.model_validate_json(response.text or '')
-        cited = {citation.feedback_id for citation in answer.citations}
-        markers = set(re.findall(r"\[source:([^\]]+)\]", answer.answer))
-        if not cited or not cited.issubset(source_ids) or not markers or not markers.issubset(source_ids) or not markers.issubset(cited):
-            raise HTTPException(status_code=502, detail="Gemini answer did not provide valid grounded citations")
-        return answer
+        return validate_answer(AnswerResponse.model_validate_json(response.text or ''), source_ids)
     except HTTPException: raise
     except Exception as error: raise provider_error(error, "Gemini grounded answer request failed") from error
 

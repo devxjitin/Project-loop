@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import HTTPException
 
-from app.main import parse_classifications, require_internal_token
+from app.main import AnswerResponse, Citation, NO_ANSWER, marker_ids, parse_classifications, require_internal_token, validate_answer
 
 
 class AiServiceValidationTests(unittest.TestCase):
@@ -20,6 +20,26 @@ class AiServiceValidationTests(unittest.TestCase):
             os.environ.pop("AI_SERVICE_TOKEN", None)
         else:
             os.environ["AI_SERVICE_TOKEN"] = self.previous_token
+
+    def test_marker_ids_accepts_common_formats(self) -> None:
+        text = "Slow [source:a] and buggy [source: b] and rude [source:c, d][source:a]."
+        self.assertEqual(marker_ids(text), ["a", "b", "c", "d"])
+
+    def test_answer_with_valid_markers_gets_citations_from_the_markers(self) -> None:
+        raw = AnswerResponse(answer="Billing is confusing [source:a].", citations=[Citation(feedback_id="zzz")])
+        result = validate_answer(raw, {"a", "b"})
+        self.assertEqual([citation.feedback_id for citation in result.citations], ["a"])
+
+    def test_honest_no_answer_is_valid_even_with_a_stray_citation(self) -> None:
+        raw = AnswerResponse(answer=NO_ANSWER, citations=[Citation(feedback_id="a")])
+        result = validate_answer(raw, {"a"})
+        self.assertEqual((result.answer, result.citations), (NO_ANSWER, []))
+
+    def test_rejects_unknown_source_markers_and_unmarked_claims(self) -> None:
+        with self.assertRaises(HTTPException):
+            validate_answer(AnswerResponse(answer="Made up [source:nope]."), {"a"})
+        with self.assertRaises(HTTPException):
+            validate_answer(AnswerResponse(answer="Customers like it.", citations=[Citation(feedback_id="a")]), {"a"})
 
     def test_accepts_complete_sentiment_classification(self) -> None:
         result = parse_classifications(
