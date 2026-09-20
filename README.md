@@ -4,6 +4,8 @@
 
 **Developers:** Sonia and Purnima
 
+**Project report (PDF):** [docs/LOOP-Project-Report.pdf](docs/LOOP-Project-Report.pdf), with screenshots, architecture and workflow diagrams, and the full tech stack.
+
 ## Live demo
 
 | What | URL |
