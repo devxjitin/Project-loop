@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import asyncio
@@ -113,6 +114,7 @@ def gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 def provider_error(error: Exception, message: str) -> HTTPException:
+    logging.getLogger("uvicorn.error").error("%s: %s: %s", message, type(error).__name__, error)
     return HTTPException(status_code=429 if getattr(error, "code", None) == 429 else 502, detail=message)
 
 @app.get("/health")

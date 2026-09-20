@@ -16,3 +16,4 @@ apps/web/CLAUDE.md
 
 .vercel
 .env*
+!.env.example
