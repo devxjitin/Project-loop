@@ -15,9 +15,14 @@ async function setSentiments(pairs: Array<[string, string]>) {
   if (pairs.length) await workerDb.query('UPDATE feedback_items f SET sentiment = v.s::sentiment_label, updated_at = now() FROM unnest($1::uuid[], $2::text[]) AS v(id, s) WHERE f.id = v.id AND f.sentiment IS NULL', [pairs.map((pair) => pair[0]), pairs.map((pair) => pair[1])]);
 }
 // Keep going until nothing is pending instead of waiting for the next scheduled scan between batches.
+let pausedUntil = 0;
 async function classifyAllPending() {
+  if (Date.now() < pausedUntil) return { classified: 0 };
   let total = 0;
-  for (let batch = 0; batch < 200; batch++) { const result = await classifyPending(); if (!result.classified) break; total += result.classified; }
+  for (let batch = 0; batch < 200; batch++) {
+    let result; try { result = await classifyPending(); } catch (error) { if (error instanceof Error && /rate-limited/.test(error.message)) { pausedUntil = Date.now() + 45_000; break; } throw error; }
+    if (!result.classified) break; total += result.classified;
+  }
   return { classified: total };
 }
 async function classifyPending() {

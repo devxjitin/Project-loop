@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -38,6 +39,7 @@ type Theme = {
   total_count: number;
 };
 type Channel = { source: string; total_count: number };
+type Status = { total: number; classified: number; embedded: number; themesDone: boolean; processing: boolean };
 type Dataset = { id: string; original_filename: string; status: string; row_count: number };
 const iso = (offset: number) =>
   new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
@@ -52,16 +54,22 @@ export function AnalyticsDashboard() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [jobId, setJobId] = useState("");
+  const [status, setStatus] = useState<Status | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const loaded = useRef(false);
+  const wasProcessing = useRef(false);
   const range = useMemo(
-    () => new URLSearchParams(jobId ? { from, to, jobId } : { from, to }).toString(),
+    () => new URLSearchParams(jobId ? { jobId } : { from, to }).toString(),
     [from, to, jobId],
   );
-  const load = async () => {
+  const load = async (quiet = false) => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
-    setLoading(true);
+    // First load shows skeletons; later refreshes keep the charts on screen with a small spinner.
+    if (loaded.current || quiet) setRefreshing(true);
+    else setLoading(true);
     try {
       const results = await Promise.all([
         fetch(`/api/analytics/trend?${range}`, { headers }),
@@ -81,9 +89,37 @@ export function AnalyticsDashboard() {
         error instanceof Error ? error.message : "Unable to load analytics.",
       );
     } finally {
+      loaded.current = true;
       setLoading(false);
+      setRefreshing(false);
     }
   };
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  });
+  const pollStatus = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`/api/analytics/status${jobId ? `?jobId=${jobId}` : ""}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const next = (await response.json()) as Status;
+      setStatus(next);
+      // Refresh the charts as results arrive and once more when processing ends.
+      if (next.processing || wasProcessing.current) void loadRef.current(true);
+      wasProcessing.current = next.processing;
+    } catch {
+      /* the next poll retries */
+    }
+  }, [token, jobId]);
+  useEffect(() => {
+    wasProcessing.current = false;
+    void pollStatus();
+    const timer = setInterval(() => {
+      if (wasProcessing.current) void pollStatus();
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [pollStatus]);
   useEffect(() => {
     void load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, jobId]);
@@ -94,6 +130,19 @@ export function AnalyticsDashboard() {
       .then((body: { jobs: Dataset[] }) => setDatasets(body.jobs.filter((job) => job.status === "completed")))
       .catch(() => setDatasets([]));
   }, [token]);
+  const totals = useMemo(
+    () =>
+      trend.reduce(
+        (sum, row) => ({
+          positive: sum.positive + row.positive_count,
+          neutral: sum.neutral + row.neutral_count,
+          negative: sum.negative + row.negative_count,
+          total: sum.total + row.total_count,
+        }),
+        { positive: 0, neutral: 0, negative: 0, total: 0 },
+      ),
+    [trend],
+  );
   const drillIntoTheme = (theme: Theme) => {
     router.push(`/feedback?themeId=${encodeURIComponent(theme.theme_id)}`);
   };
@@ -121,6 +170,8 @@ export function AnalyticsDashboard() {
             ))}
           </select>
         </label>
+        {!jobId && (
+          <>
         <label className="text-sm">
           From
           <Input
@@ -139,10 +190,23 @@ export function AnalyticsDashboard() {
             className="ml-2 rounded-md border px-2 py-1"
           />
         </label>
-        <Button onClick={() => void load()} disabled={!token}>
+        <Button onClick={() => void load()} disabled={!token || refreshing}>
           Update dashboard
         </Button>
+          </>
+        )}
+        {jobId && (
+          <p className="text-xs text-slate-500">
+            Showing every row in this file, regardless of date.
+          </p>
+        )}
+        {refreshing && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500" role="status">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Updating…
+          </span>
+        )}
       </div>
+      {status?.processing && <ProcessingPanel status={status} />}
       {message && (
         <DataLoadError message={message} onRetry={() => void load()} />
       )}
@@ -172,7 +236,30 @@ export function AnalyticsDashboard() {
         </div>
       ) : (
         !message && (
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div
+            className={`mt-6 grid gap-5 transition-opacity lg:grid-cols-2 ${refreshing ? "opacity-60" : ""}`}
+            aria-busy={refreshing}
+          >
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-2">
+              {[
+                { label: "Total", value: totals.total, tone: "text-slate-900" },
+                { label: "Positive", value: totals.positive, tone: "text-emerald-600" },
+                { label: "Neutral", value: totals.neutral, tone: "text-slate-500" },
+                { label: "Negative", value: totals.negative, tone: "text-rose-600" },
+              ].map((card) => (
+                <div key={card.label} className="rounded-lg border p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    {card.label}
+                  </p>
+                  <p className={`mt-1 text-2xl font-semibold ${card.tone}`}>{card.value}</p>
+                  {card.label !== "Total" && totals.total > 0 && (
+                    <p className="text-xs text-slate-500">
+                      {Math.round((card.value / totals.total) * 100)}%
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
             <article className="rounded-lg border p-4 lg:col-span-2">
               <h3 className="font-medium">Sentiment trend</h3>
               <div className="mt-4 h-72">
@@ -272,5 +359,46 @@ export function AnalyticsDashboard() {
         )
       )}
     </section>
+  );
+}
+
+function ProcessingPanel({ status }: { status: Status }) {
+  const pct = (done: number) => (status.total ? Math.round((done / status.total) * 100) : 100);
+  const steps = [
+    { label: "Reading sentiment", done: status.classified, complete: status.classified >= status.total, counted: true },
+    { label: "Understanding meaning", done: status.embedded, complete: status.embedded >= status.total, counted: true },
+    { label: "Grouping themes", done: 0, complete: status.themesDone, counted: false },
+  ];
+  return (
+    <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4" role="status" aria-live="polite">
+      <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
+        <Loader2 className="size-4 animate-spin" aria-hidden /> Analysing your feedback. Results appear below as they are ready.
+      </p>
+      <ul className="mt-3 grid gap-3 sm:grid-cols-3">
+        {steps.map((step) => (
+          <li key={step.label} className="text-xs text-blue-900">
+            <span className="flex items-center gap-1.5 font-medium">
+              {step.complete ? (
+                <CheckCircle2 className="size-3.5 text-emerald-600" aria-hidden />
+              ) : (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              )}
+              {step.label}
+              {step.counted && (
+                <span className="ml-auto tabular-nums">
+                  {step.done}/{status.total}
+                </span>
+              )}
+            </span>
+            <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-blue-100">
+              <span
+                className={`block h-full rounded-full bg-blue-600 transition-all ${step.counted || step.complete ? "" : "animate-pulse"}`}
+                style={{ width: `${step.counted ? pct(step.done) : step.complete ? 100 : 30}%` }}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

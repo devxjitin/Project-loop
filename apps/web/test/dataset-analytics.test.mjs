@@ -16,13 +16,14 @@ const request = (path, { method = "GET", token, body } = {}) =>
   });
 
 test("analytics can be scoped to one uploaded file and deleting the file removes its analytics", async () => {
-  const [{ POST: signup }, ingestions, ingestion, trend, channels, themes] = await Promise.all([
+  const [{ POST: signup }, ingestions, ingestion, trend, channels, themes, status] = await Promise.all([
     import("../app/api/auth/signup/route.ts"),
     import("../app/api/ingestions/route.ts"),
     import("../app/api/ingestions/[jobId]/route.ts"),
     import("../app/api/analytics/trend/route.ts"),
     import("../app/api/analytics/channels/route.ts"),
     import("../app/api/analytics/themes/route.ts"),
+    import("../app/api/analytics/status/route.ts"),
   ]);
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -69,6 +70,17 @@ test("analytics can be scoped to one uploaded file and deleting the file removes
     assert.equal((await get(themes, "/api/analytics/themes", jobB))[0].total_count, 3);
     assert.equal((await get(themes, "/api/analytics/themes"))[0].total_count, 5);
     assert.equal((await trend.GET(request("/api/analytics/trend?jobId=not-a-uuid", { token: accessToken }))).status, 400);
+
+    // Pipeline status: all 5 rows are classified but none has an embedding yet, so analysis is still in progress.
+    const statusOf = async (jobId) => (await (await status.GET(request(`/api/analytics/status${jobId ? `?jobId=${jobId}` : ""}`, { token: accessToken }))).json());
+    const allStatus = await statusOf();
+    assert.deepEqual([allStatus.total, allStatus.classified, allStatus.embedded, allStatus.processing], [5, 5, 0, true]);
+    assert.equal((await statusOf(jobA)).total, 2);
+
+    // A selected file is analysed in full, so the date range is ignored for it but still applies to all files.
+    await client.query("INSERT INTO feedback_items (tenant_id, ingestion_job_id, source, raw_text, sentiment, occurred_at) VALUES ($1, $2, 'csv-a', 'old feedback', 'neutral', '2020-01-01')", [tenantId, jobA]);
+    assert.equal(total(await get(trend, "/api/analytics/trend", jobA)), 3, "old row counts when the file is selected");
+    assert.equal(total(await get(trend, "/api/analytics/trend")), 5, "old row is outside the default all-files range");
 
     const deleted = await ingestion.DELETE(request(`/api/ingestions/${jobB}`, { method: "DELETE", token: accessToken }), { params: Promise.resolve({ jobId: jobB }) });
     assert.equal(deleted.status, 200);

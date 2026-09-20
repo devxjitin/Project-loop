@@ -30,10 +30,14 @@ async function embedPending() {
 
 // Drain every pending batch in one run, then queue theme clustering (debounced) so new uploads get themes
 // within seconds instead of waiting for the weekly recluster. Stops if a batch makes no progress.
+let pausedUntil = 0;
 async function embedAllPending() {
+  if (Date.now() < pausedUntil) return { embedded: 0 };
   let total = 0; const seen = new Set<string>();
   for (let batch = 0; batch < 100; batch++) {
-    const result = await embedPending(); if (!result.embedded) break;
+    // Gemini's free tier allows 100 embedding requests a minute; wait it out rather than failing and retrying at once.
+    let result; try { result = await embedPending(); } catch (error) { if (error instanceof Error && /rate-limited/.test(error.message)) { pausedUntil = Date.now() + 45_000; break; } throw error; }
+    if (!result.embedded) break;
     const fresh = result.ids.filter((id) => !seen.has(id)); result.ids.forEach((id) => seen.add(id));
     if (!fresh.length) break;
     total += fresh.length;
