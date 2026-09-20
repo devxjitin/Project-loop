@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { AuthError, requireActiveAuth } from '@/lib/server/auth';
 import { setTenantContext, withTransaction } from '@/lib/server/db';
-import { dateRange, datasetId, channels } from '@/lib/server/analytics';
+import { dateRange, datasetId, fileCounts } from '@/lib/server/analytics';
 
 export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const claims = await requireActiveAuth(request);
     const { from, to } = dateRange(request.nextUrl.searchParams);
     const jobId = datasetId(request.nextUrl.searchParams);
-    const data = await withTransaction(async (client) => { await setTenantContext(client, claims.tenantId); return channels(client, claims.tenantId, from, to, jobId); });
+    const data = await withTransaction(async (client) => { await setTenantContext(client, claims.tenantId); return fileCounts(client, claims.tenantId, from, to, jobId); });
     return Response.json({ from, to, jobId, data });
-  } catch (error) { if (error instanceof AuthError) return Response.json({ error: error.message }, { status: error.status }); return Response.json({ error: error instanceof Error ? error.message : 'Unable to load channels.' }, { status: 400 }); }
+  } catch (error) { if (error instanceof AuthError) return Response.json({ error: error.message }, { status: error.status }); return Response.json({ error: error instanceof Error ? error.message : 'Unable to load files.' }, { status: 400 }); }
 }

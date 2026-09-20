@@ -16,14 +16,17 @@ const request = (path, { method = "GET", token, body } = {}) =>
   });
 
 test("analytics can be scoped to one uploaded file and deleting the file removes its analytics", async () => {
-  const [{ POST: signup }, ingestions, ingestion, trend, channels, themes, status] = await Promise.all([
+  const [{ POST: signup }, ingestions, ingestion, trend, files, themes, status, keywords, feedbackList, feedbackItem] = await Promise.all([
     import("../app/api/auth/signup/route.ts"),
     import("../app/api/ingestions/route.ts"),
     import("../app/api/ingestions/[jobId]/route.ts"),
     import("../app/api/analytics/trend/route.ts"),
-    import("../app/api/analytics/channels/route.ts"),
+    import("../app/api/analytics/files/route.ts"),
     import("../app/api/analytics/themes/route.ts"),
     import("../app/api/analytics/status/route.ts"),
+    import("../app/api/analytics/keywords/route.ts"),
+    import("../app/api/feedback/route.ts"),
+    import("../app/api/feedback/[feedbackId]/route.ts"),
   ]);
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -66,7 +69,9 @@ test("analytics can be scoped to one uploaded file and deleting the file removes
     const bTrend = await get(trend, "/api/analytics/trend", jobB);
     assert.equal(total(bTrend), 3);
     assert.equal(bTrend[0].negative_count, 3);
-    assert.deepEqual((await get(channels, "/api/analytics/channels", jobA)).map((row) => row.source), ["csv-a"]);
+    assert.deepEqual((await get(files, "/api/analytics/files", jobA)).map((row) => row.file_name), ["a.csv"]);
+    const byFile = await get(files, "/api/analytics/files");
+    assert.deepEqual(byFile.map((row) => [row.file_name, row.total_count]), [["b.csv", 3], ["a.csv", 2]], "sentiment by file uses file names");
     assert.equal((await get(themes, "/api/analytics/themes", jobB))[0].total_count, 3);
     assert.equal((await get(themes, "/api/analytics/themes"))[0].total_count, 5);
     assert.equal((await trend.GET(request("/api/analytics/trend?jobId=not-a-uuid", { token: accessToken }))).status, 400);
@@ -77,17 +82,31 @@ test("analytics can be scoped to one uploaded file and deleting the file removes
     assert.deepEqual([allStatus.total, allStatus.classified, allStatus.embedded, allStatus.processing], [5, 5, 0, true]);
     assert.equal((await statusOf(jobA)).total, 2);
 
-    // A selected file is analysed in full, so the date range is ignored for it but still applies to all files.
-    await client.query("INSERT INTO feedback_items (tenant_id, ingestion_job_id, source, raw_text, sentiment, occurred_at) VALUES ($1, $2, 'csv-a', 'old feedback', 'neutral', '2020-01-01')", [tenantId, jobA]);
-    assert.equal(total(await get(trend, "/api/analytics/trend", jobA)), 3, "old row counts when the file is selected");
-    assert.equal(total(await get(trend, "/api/analytics/trend")), 5, "old row is outside the default all-files range");
+    // Dates are optional: without them every row counts, and an explicit range still narrows the result.
+    assert.equal(total(await get(trend, "/api/analytics/trend")), 5);
+    assert.equal(total(await get(trend, "/api/analytics/trend?from=2000-01-01&to=2000-01-02")), 0);
+    assert.equal(typeof (await get(trend, "/api/analytics/trend"))[0].day, "string", "day is a plain YYYY-MM-DD string");
+
+    // Keywords are counted once per feedback item and split by sentiment.
+    const words = await get(keywords, "/api/analytics/keywords");
+    assert.ok(words.length > 0 && words.every((row) => row.total_count >= 2));
+
+    // Ask LOOP and the inbox cite the file name, and the inbox can filter by file.
+    const inboxAll = await (await feedbackList.GET(request("/api/feedback", { token: accessToken }))).json();
+    assert.equal(inboxAll.items.length, 5);
+    assert.ok(inboxAll.items.every((item) => item.source === "a.csv" || item.source === "b.csv"));
+    const inboxA = await (await feedbackList.GET(request(`/api/feedback?jobId=${jobA}`, { token: accessToken }))).json();
+    assert.deepEqual([...new Set(inboxA.items.map((item) => item.source))], ["a.csv"]);
+    assert.equal((await feedbackList.GET(request("/api/feedback?jobId=nope", { token: accessToken }))).status, 400);
+    const single = await (await feedbackItem.GET(request(`/api/feedback/${inboxA.items[0].id}`, { token: accessToken }), { params: Promise.resolve({ feedbackId: inboxA.items[0].id }) })).json();
+    assert.equal(single.item.source, "a.csv");
 
     const deleted = await ingestion.DELETE(request(`/api/ingestions/${jobB}`, { method: "DELETE", token: accessToken }), { params: Promise.resolve({ jobId: jobB }) });
     assert.equal(deleted.status, 200);
 
     assert.equal(total(await get(trend, "/api/analytics/trend")), 2, "file B analytics removed from all-files view");
     assert.equal(total(await get(trend, "/api/analytics/trend", jobB)), 0);
-    assert.deepEqual((await get(channels, "/api/analytics/channels")).map((row) => row.source), ["csv-a"]);
+    assert.deepEqual((await get(files, "/api/analytics/files")).map((row) => row.file_name), ["a.csv"]);
     assert.equal((await get(themes, "/api/analytics/themes"))[0].total_count, 2);
     assert.equal((await client.query("SELECT count(*)::int AS n FROM feedback_items WHERE ingestion_job_id = $1", [jobB])).rows[0].n, 0);
 

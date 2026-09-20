@@ -34,7 +34,8 @@ export function FeedbackInbox() {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [selected, setSelected] = useState<Feedback | null>(null);
   const [query, setQuery] = useState("");
-  const [source, setSource] = useState("");
+  const [files, setFiles] = useState<Array<{ id: string; original_filename: string }>>([]);
+  const [jobId, setJobId] = useState("");
   const [sentiment, setSentiment] = useState("");
   const [themeId, setThemeId] = useState(
     () => searchParams.get("themeId") ?? "",
@@ -45,7 +46,7 @@ export function FeedbackInbox() {
     if (!token) return;
     const params = new URLSearchParams({ limit: "50" });
     if (query) params.set("q", query);
-    if (source) params.set("source", source);
+    if (jobId) params.set("jobId", jobId);
     if (sentiment) params.set("sentiment", sentiment);
     if (themeOverride) params.set("themeId", themeOverride);
     setLoading(true);
@@ -69,6 +70,16 @@ export function FeedbackInbox() {
   useEffect(() => {
     if (!token) return;
     void load();
+    void fetch("/api/ingestions", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => (response.ok ? response.json() : { jobs: [] }))
+      .then((body: { jobs: Array<{ id: string; original_filename: string; status: string }> }) => setFiles(body.jobs.filter((job) => job.status === "completed")))
+      .catch(() => setFiles([]));
+    const cited = searchParams.get("feedbackId");
+    if (cited)
+      void fetch(`/api/feedback/${encodeURIComponent(cited)}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body) => { if (body?.item) setSelected(body.item); })
+        .catch(() => undefined);
     void fetch("/api/themes", { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.json())
       .then((body) => {
@@ -80,7 +91,7 @@ export function FeedbackInbox() {
       <div>
         <h2 className="text-xl font-semibold">Feedback inbox</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Search customer feedback across every connected channel.
+          Search customer feedback across your uploaded files.
         </p>
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-4">
@@ -97,13 +108,17 @@ export function FeedbackInbox() {
           />
         </label>
         <Select
-          aria-label="Source"
-          value={source}
-          onChange={(event) => setSource(event.target.value)}
+          aria-label="File"
+          value={jobId}
+          onChange={(event) => setJobId(event.target.value)}
           className="rounded-md border px-3 py-2 text-sm"
         >
-          <option value="">All channels</option>
-          <option value="csv">CSV upload</option>
+          <option value="">All files</option>
+          {files.map((file) => (
+            <option key={file.id} value={file.id}>
+              {file.original_filename}
+            </option>
+          ))}
         </Select>
         <Select
           aria-label="Sentiment"
@@ -137,7 +152,7 @@ export function FeedbackInbox() {
         <Button
           onClick={() => {
             setQuery("");
-            setSource("");
+            setJobId("");
             setSentiment("");
             setThemeId("");
           }}

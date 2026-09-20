@@ -81,7 +81,7 @@ export function QaChat() {
                 {message.citations.map((citation) => (
                   <a
                     key={citation.feedbackId}
-                    href={`/?feedbackId=${encodeURIComponent(citation.feedbackId)}`}
+                    href={`/feedback?feedbackId=${encodeURIComponent(citation.feedbackId)}`}
                     title={citation.excerpt}
                     className="rounded-full border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
                   >
