@@ -34,7 +34,10 @@ export async function importCsvFeedback(input: { jobId: string; tenantId: string
     await withTransaction(async (client) => {
       await setTenantContext(client, input.tenantId);
       await client.query("UPDATE ingestion_jobs SET status = 'processing', started_at = now() WHERE id = $1 AND tenant_id = $2", [input.jobId, input.tenantId]);
-      for (const [index, text] of feedback.entries()) await client.query('INSERT INTO feedback_items (tenant_id, ingestion_job_id, source, raw_text, external_id) VALUES ($1, $2, $3, $4, $5)', [input.tenantId, input.jobId, 'csv', text, input.jobId + ':' + index]);
+      for (let start = 0; start < feedback.length; start += 1000) {
+        const chunk = feedback.slice(start, start + 1000);
+        await client.query("INSERT INTO feedback_items (tenant_id, ingestion_job_id, source, raw_text, external_id) SELECT $1::uuid, $2::uuid, 'csv', t.text, $2::uuid::text || ':' || (t.ord - 1 + $3::bigint) FROM unnest($4::text[]) WITH ORDINALITY AS t(text, ord)", [input.tenantId, input.jobId, start, chunk]);
+      }
       await client.query("UPDATE ingestion_jobs SET status = 'completed', row_count = $3, error_count = $4, completed_at = now() WHERE id = $1 AND tenant_id = $2", [input.jobId, input.tenantId, feedback.length, skipped]);
     });
     return { imported: feedback.length, skipped };
