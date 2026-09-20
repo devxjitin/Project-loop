@@ -68,6 +68,8 @@ export function AnalyticsDashboard() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [stalled, setStalled] = useState(false);
+  const progress = useRef({ key: "", since: 0 });
   const loaded = useRef(false);
   const wasProcessing = useRef(false);
   const query = useMemo(() => (jobId ? `?jobId=${jobId}` : ""), [jobId]);
@@ -135,6 +137,10 @@ export function AnalyticsDashboard() {
       if (!response.ok) return;
       const next = (await response.json()) as Status;
       setStatus(next);
+      // No movement for a while usually means a free-tier service is waking up.
+      const key = `${next.classified}/${next.embedded}/${next.themesDone}`;
+      if (key !== progress.current.key) progress.current = { key, since: Date.now() };
+      setStalled(next.processing && Date.now() - progress.current.since > 45_000);
       // Refresh the charts as results arrive and once more when processing ends.
       if (next.processing || wasProcessing.current) void loadRef.current(true);
       wasProcessing.current = next.processing;
@@ -238,7 +244,7 @@ export function AnalyticsDashboard() {
           </span>
         )}
       </div>
-      {status?.processing && <ProcessingPanel status={status} />}
+      {status?.processing && <ProcessingPanel status={status} stalled={stalled} />}
       {message && (
         <DataLoadError message={message} onRetry={() => void load()} />
       )}
@@ -628,7 +634,7 @@ function KeywordCard({
   );
 }
 
-function ProcessingPanel({ status }: { status: Status }) {
+function ProcessingPanel({ status, stalled }: { status: Status; stalled: boolean }) {
   const pct = (done: number) =>
     status.total ? Math.round((done / status.total) * 100) : 100;
   const steps = [
@@ -646,6 +652,11 @@ function ProcessingPanel({ status }: { status: Status }) {
         <Loader2 className="size-4 animate-spin" aria-hidden /> Analysing your
         feedback. Results appear below as they are ready.
       </p>
+      {stalled && (
+        <p className="mt-2 text-xs text-blue-800">
+          Still working. The analysis service runs on free hosting and can take up to a minute to wake up, or to wait out a rate limit. This page updates by itself.
+        </p>
+      )}
       <ul className="mt-3 grid gap-3 sm:grid-cols-3">
         {steps.map((step) => (
           <li key={step.label} className="text-xs text-blue-900">

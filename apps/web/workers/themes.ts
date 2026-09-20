@@ -1,5 +1,6 @@
 import { Queue, Worker } from 'bullmq';
 import { workerDb } from '../lib/server/db';
+import { fetchWithRetry } from '../lib/server/ai-client';
 import { redactForModel } from '../lib/server/pii';
 
 type Item = { id: string; raw_text: string; embedding: string };
@@ -15,7 +16,7 @@ function centroid(vectors: number[][]) { const result = Array<number>(1536).fill
 async function clusterTenant(tenantId: string) {
   const items = (await workerDb.query<Item>(`SELECT f.id, f.raw_text, e.embedding::text FROM feedback_items f JOIN feedback_embeddings e ON e.feedback_item_id = f.id WHERE f.tenant_id = $1 AND e.tenant_id = $1 ORDER BY f.created_at DESC LIMIT 5000`, [tenantId])).rows;
   if (items.length < 3) return { themes: 0, assigned: 0 };
-  const response = await fetch(`${aiUrl}/v1/themes/cluster`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: items.map((item) => ({ id: item.id, text: redactForModel(item.raw_text), embedding: vector(item.embedding) })) }) });
+  const response = await fetchWithRetry(`${aiUrl}/v1/themes/cluster`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: items.map((item) => ({ id: item.id, text: redactForModel(item.raw_text), embedding: vector(item.embedding) })) }) });
   if (response.status === 429) throw new Error('Theme service rate-limited clustering.');
   if (!response.ok) throw new Error(`Theme service failed (${response.status}).`);
   const { themes } = await response.json() as { themes: Cluster[] };

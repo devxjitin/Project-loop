@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Queue, Worker } from 'bullmq';
 import { workerDb } from '../lib/server/db';
+import { fetchWithRetry } from '../lib/server/ai-client';
 import { redactForModel } from '../lib/server/pii';
 
 type FeedbackRow = { id: string; raw_text: string };
@@ -35,7 +36,7 @@ async function classifyPending() {
   await setSentiments(cachedRows.map((row) => [row.id, cached.get(hash(row.raw_text))!]));
   const unique = new Map<string, FeedbackRow>(); for (const row of rows.filter((row) => !cached.has(hash(row.raw_text)))) unique.set(hash(row.raw_text), row);
   if (!unique.size) return { classified: cachedRows.length, cached: cachedRows.length };
-  const response = await fetch(`${aiUrl}/v1/sentiment/classify`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: [...unique.entries()].map(([id, row]) => ({ id, text: redactForModel(row.raw_text) })) }) });
+  const response = await fetchWithRetry(`${aiUrl}/v1/sentiment/classify`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: [...unique.entries()].map(([id, row]) => ({ id, text: redactForModel(row.raw_text) })) }) });
   if (response.status === 429) throw new Error('AI service rate-limited classification.');
   if (!response.ok) throw new Error(`AI service failed (${response.status}).`);
   const body = await response.json() as AiResponse;

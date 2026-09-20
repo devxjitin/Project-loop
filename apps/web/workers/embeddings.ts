@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Queue, Worker } from 'bullmq';
 import { workerDb } from '../lib/server/db';
+import { fetchWithRetry } from '../lib/server/ai-client';
 import { redactForModel } from '../lib/server/pii';
 
 type FeedbackRow = { id: string; tenant_id: string; raw_text: string };
@@ -17,7 +18,7 @@ async function embedPending() {
     LEFT JOIN feedback_embeddings e ON e.feedback_item_id = f.id AND e.text_hash = encode(digest(convert_to(trim(regexp_replace(f.raw_text, '\\s+', ' ', 'g')), 'UTF8'), 'sha256'), 'hex')
     WHERE e.feedback_item_id IS NULL ORDER BY f.created_at ASC LIMIT 100`)).rows;
   if (!rows.length) return { embedded: 0, ids: [] as string[] };
-  const response = await fetch(`${aiUrl}/v1/embeddings`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: rows.map((row) => ({ id: row.id, text: redactForModel(row.raw_text) })) }) });
+  const response = await fetchWithRetry(`${aiUrl}/v1/embeddings`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': process.env.AI_SERVICE_TOKEN ?? '' }, body: JSON.stringify({ items: rows.map((row) => ({ id: row.id, text: redactForModel(row.raw_text) })) }) });
   if (response.status === 429) throw new Error('Embedding service rate-limited the batch.');
   if (!response.ok) throw new Error(`Embedding service failed (${response.status}).`);
   const body = await response.json() as AiResponse; const vectors = new Map(body.embeddings.map((item) => [item.id, item.embedding]));
